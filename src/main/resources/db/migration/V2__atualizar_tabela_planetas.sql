@@ -1,0 +1,1 @@
+ALTER TABLE planetas ADD COLUMN aparicoes INTEGER;
