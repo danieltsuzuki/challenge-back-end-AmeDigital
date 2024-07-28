@@ -6,12 +6,15 @@ import danieltsuzuk.com.github.amedigital.dto.StarWarsPlanetaResponse;
 import danieltsuzuk.com.github.amedigital.dto.StarWarsPlanetaResultados;
 import danieltsuzuk.com.github.amedigital.entities.Planeta;
 import danieltsuzuk.com.github.amedigital.exceptions.BancoDeDadosException;
+import danieltsuzuk.com.github.amedigital.exceptions.PlanetaNaoEncontradoException;
 import danieltsuzuk.com.github.amedigital.repositories.PlanetaRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
+
+import java.util.Optional;
 
 @Service
 public class PlanetaService {
@@ -45,6 +48,20 @@ public class PlanetaService {
 
         Planeta planeta = repository.save(dto.criarPlanetaComAparicoes(aparicoes));
         return new PlanetaResponse(planeta);
+    }
+
+    public PlanetaResponse buscarPorId(Long id) {
+        Optional<Planeta> planeta = Optional.ofNullable(repository.findById(id).orElseThrow(
+                () -> new PlanetaNaoEncontradoException("Planeta nao enconntrado")
+        ));
+        return new PlanetaResponse(planeta.get());
+    }
+
+    public PlanetaResponse buscarPorNome(String nome) {
+        Optional<Planeta> planeta = Optional.ofNullable(repository.findByNome(nome).orElseThrow(
+                () -> new PlanetaNaoEncontradoException("Planeta nao enconntrado")
+        ));
+        return new PlanetaResponse(planeta.get());
     }
 
 }

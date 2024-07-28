@@ -38,4 +38,12 @@ public class TratadorDeExceptions {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(erro);
     }
 
+    @ExceptionHandler(PlanetaNaoEncontradoException.class)
+    public ResponseEntity<Object> bancoDeDadosException(HttpServletRequest request, PlanetaNaoEncontradoException e) {
+        HttpStatus status = HttpStatus.NOT_FOUND;
+        ErroResponse erro = new ErroResponse(new Date(), status.value(), Arrays.asList(e.getMessage()), request.getRequestURI());
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(erro);
+    }
+
 }
