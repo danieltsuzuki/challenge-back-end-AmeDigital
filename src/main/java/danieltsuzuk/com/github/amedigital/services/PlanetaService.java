@@ -3,7 +3,9 @@ package danieltsuzuk.com.github.amedigital.services;
 import danieltsuzuk.com.github.amedigital.dto.PlanetaRequest;
 import danieltsuzuk.com.github.amedigital.dto.PlanetaResponse;
 import danieltsuzuk.com.github.amedigital.dto.StarWarsPlanetaResponse;
+import danieltsuzuk.com.github.amedigital.dto.StarWarsPlanetaResultados;
 import danieltsuzuk.com.github.amedigital.entities.Planeta;
+import danieltsuzuk.com.github.amedigital.exceptions.BancoDeDadosException;
 import danieltsuzuk.com.github.amedigital.repositories.PlanetaRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -23,6 +25,10 @@ public class PlanetaService {
 
     @Transactional
     public PlanetaResponse criar(PlanetaRequest dto) {
+        if (repository.existsByNome(dto.getNome())) {
+            throw new BancoDeDadosException("Planeta ja cadastrado");
+        }
+
         int aparicoes = 0;
         Mono<StarWarsPlanetaResponse> monoAparicoes = apiStarWars.get()
                 .uri("/planets/?search={nomePlaneta}", dto.getNome())
@@ -32,7 +38,10 @@ public class PlanetaService {
         StarWarsPlanetaResponse starWarsPlanetaResponse = monoAparicoes.block();
 
         if (starWarsPlanetaResponse != null && !starWarsPlanetaResponse.getResults().isEmpty())
-            aparicoes = starWarsPlanetaResponse.getResults().get(0).getFilms().size();
+            for (StarWarsPlanetaResultados planeta : starWarsPlanetaResponse.results) {
+                if (planeta.name.equalsIgnoreCase(dto.getNome()))
+                    aparicoes = planeta.getFilms().size();
+            }
 
         Planeta planeta = repository.save(dto.criarPlanetaComAparicoes(aparicoes));
         return new PlanetaResponse(planeta);
