@@ -1,9 +1,11 @@
 package danieltsuzuk.com.github.amedigital.dto;
 
 import danieltsuzuk.com.github.amedigital.entities.Planeta;
-import lombok.Getter;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-@Getter
+@Data
+@NoArgsConstructor
 public class PlanetaResponse {
 
     private Long id;

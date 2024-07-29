@@ -22,7 +22,7 @@ import java.util.Optional;
 /**
  * Serviço para a entidade Planeta.
  * <p>
- * Esta classe fornece métodos para criar, buscar e listar planetas.
+ * Esta classe fornece métodos para criar, buscar, listar e deletar planetas.
  * </p>
  */
 @Service
@@ -110,5 +110,20 @@ public class PlanetaService {
      */
     public Page<PlanetaResponse> buscarTodos(Specification spec, Pageable pageable) {
         return repository.findAll(spec, pageable);
+    }
+
+    /**
+     * Deleta um planeta pelo seu ID.
+     * <p>
+     * Este método lança uma exceção se o planeta não for encontrado.
+     * </p>
+     *
+     * @param id o ID do planeta a ser deletado
+     * @throws PlanetaNaoEncontradoException se o planeta não for encontrado
+     */
+    public void deletar(Long id) {
+        if (!repository.existsById(id))
+            throw new PlanetaNaoEncontradoException("Planeta nao encontrado");
+        repository.deleteById(id);
     }
 }

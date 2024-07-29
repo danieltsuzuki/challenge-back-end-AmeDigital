@@ -5,7 +5,9 @@ import danieltsuzuk.com.github.amedigital.dto.ErroResponse;
 import danieltsuzuk.com.github.amedigital.dto.PlanetaRequest;
 import danieltsuzuk.com.github.amedigital.dto.PlanetaResponse;
 import danieltsuzuk.com.github.amedigital.entities.Planeta;
-import danieltsuzuk.com.github.amedigital.repositories.PlanetaRepository;
+import danieltsuzuk.com.github.amedigital.exceptions.BancoDeDadosException;
+import danieltsuzuk.com.github.amedigital.exceptions.PlanetaNaoEncontradoException;
+import danieltsuzuk.com.github.amedigital.services.PlanetaService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,13 +24,11 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -45,7 +45,7 @@ class PlanetaControllerTest {
     private MockMvc mockMvc;
 
     @MockBean
-    private PlanetaRepository repository;
+    private PlanetaService service;
 
     private PlanetaRequest request200;
     private PlanetaRequest request400;
@@ -77,8 +77,7 @@ class PlanetaControllerTest {
     @Test
     @Transactional
 public void deveRetornarCodigo201QuandoCriarPlanetaComSucesso() throws Exception {
-        when(repository.existsByNome(request200.getNome())).thenReturn(false);
-        when(repository.save(any())).thenReturn(planeta);
+        when(service.criar(any())).thenReturn(new PlanetaResponse(planeta));
 
         MvcResult response = mockMvc.perform(post("/planetas")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -107,7 +106,7 @@ public void deveRetornarCodigo201QuandoCriarPlanetaComSucesso() throws Exception
     @Test
     @Transactional
     public void deveRetornarCodigo400QuandoEnviarArgumentosInvalidos() throws Exception {
-        when(repository.existsByNome(request200.getNome())).thenReturn(false);
+        when(service.criar(any())).thenThrow(new RuntimeException("asd"));
 
         MvcResult response = mockMvc.perform(post("/planetas")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -133,7 +132,7 @@ public void deveRetornarCodigo201QuandoCriarPlanetaComSucesso() throws Exception
     @Test
     @Transactional
     public void deveRetornarCodigo400QuandoPlanetaJaExistir() throws Exception {
-        when(repository.existsByNome(request200.getNome())).thenReturn(true);
+        when(service.criar(any())).thenThrow( new BancoDeDadosException("Planeta ja cadastrado"));
 
         MvcResult response = mockMvc.perform(post("/planetas")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -160,7 +159,7 @@ public void deveRetornarCodigo201QuandoCriarPlanetaComSucesso() throws Exception
     @Test
     @Transactional
     public void deveRetornarCodigo200QuandoPlanetaForEncontradoPorId() throws Exception {
-        when(repository.findById(1L)).thenReturn(Optional.of(planeta));
+        when(service.buscarPorId(1L)).thenReturn(new PlanetaResponse(planeta));
 
         MvcResult response = mockMvc.perform(get("/planetas/1")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -189,7 +188,7 @@ public void deveRetornarCodigo201QuandoCriarPlanetaComSucesso() throws Exception
     @Test
     @Transactional
     public void deveRetornarCodigo404QuandoPlanetaNaoForEncontradoPorId() throws Exception {
-        when(repository.findById(1L)).thenReturn(Optional.empty());
+        when(service.buscarPorId(1L)).thenThrow( new PlanetaNaoEncontradoException("Planeta nao encontrado"));
 
         mockMvc.perform(get("/planetas/1")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -209,16 +208,15 @@ public void deveRetornarCodigo201QuandoCriarPlanetaComSucesso() throws Exception
     @Test
     @Transactional
     public void deveRetornarCodigo200QuandoPlanetaForEncontradoPorNome() throws Exception {
-        when(repository.findByNome(request200.getNome())).thenReturn(Optional.of(planeta));
+        when(service.buscarPorNome(request200.getNome())).thenReturn(new PlanetaResponse(planeta));
 
         MvcResult response = mockMvc.perform(get("/planetas/{nome}", request200.getNome())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(request200.toString()))
+                        .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andReturn();
 
         String responseBody = response.getResponse().getContentAsString();
-        Planeta planeta = new ObjectMapper().readValue(responseBody, Planeta.class);
+        PlanetaResponse planeta = new ObjectMapper().readValue(responseBody, PlanetaResponse.class);
 
         assertNotNull(planeta.getId());
         assertEquals(planeta.getNome(), "Tatooine");
@@ -238,7 +236,7 @@ public void deveRetornarCodigo201QuandoCriarPlanetaComSucesso() throws Exception
     @Test
     @Transactional
     public void deveRetornarCodigo404QuandoPlanetaNaoForEncontradoPorNome() throws Exception {
-        when(repository.findByNome(request200.getNome())).thenReturn(Optional.empty());
+        when(service.buscarPorNome(request200.getNome())).thenThrow(new PlanetaNaoEncontradoException("Planeta nao encontrado"));
 
         mockMvc.perform(get("/planetas/{nome}", request200.getNome())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -247,15 +245,63 @@ public void deveRetornarCodigo201QuandoCriarPlanetaComSucesso() throws Exception
                 .andReturn();
     }
 
+    /**
+     * Testa o endpoint de busca de planetas.
+     * <p>
+     * Este teste verifica se a chamada ao endpoint de listagem de planetas retorna um código de status HTTP 200 (OK)
+     * juntamente com a lista de planetas. O método utiliza um mock do serviço para simular o comportamento esperado.
+     * </p>
+     *
+     * @throws Exception se ocorrer algum erro durante a execução do teste
+     */
     @Test
     @Transactional
     public void deveRetornarCodigo200ComAListaDePlanetas() throws Exception {
-        when(repository.save(any())).thenReturn(planeta);
-        when(repository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(page);
+        when(service.buscarTodos(any(Specification.class), any(Pageable.class))).thenReturn(page);
 
         mockMvc.perform(get("/planetas")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
+                .andReturn();
+    }
+
+    /**
+     * Testa o endpoint de exclusão de planeta.
+     * <p>
+     * Este teste verifica se a chamada ao endpoint de exclusão de um planeta pelo seu ID retorna um código de status HTTP 204 (No Content).
+     * O método utiliza um mock do serviço para simular a exclusão bem-sucedida do planeta.
+     * </p>
+     *
+     * @throws Exception se ocorrer algum erro durante a execução do teste
+     */
+    @Test
+    @Transactional
+    public void deveRetornarCodigo204AoDeletarPlaneta() throws Exception {
+        doNothing().when(service).deletar(1L);
+
+        mockMvc.perform(delete("/planetas/1")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNoContent())
+                .andReturn();
+    }
+
+    /**
+     * Testa o endpoint de exclusão de planeta quando o planeta não é encontrado.
+     * <p>
+     * Este teste verifica se a chamada ao endpoint de exclusão de um planeta pelo seu ID retorna um código de status HTTP 404 (Not Found)
+     * quando o planeta não é encontrado. O método utiliza um mock do serviço para simular a situação de não encontrar o planeta.
+     * </p>
+     *
+     * @throws Exception se ocorrer algum erro durante a execução do teste
+     */
+    @Test
+    @Transactional
+    public void deveRetornarCodigo404AoTentarDeletarPlaneta() throws Exception {
+        doThrow(new PlanetaNaoEncontradoException("Planeta nao encontrado")).when(service).deletar(1L);
+
+        mockMvc.perform(delete("/planetas/1")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNotFound())
                 .andReturn();
     }
 

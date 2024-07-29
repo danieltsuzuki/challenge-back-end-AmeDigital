@@ -3,8 +3,8 @@ package danieltsuzuk.com.github.amedigital.controllers;
 import danieltsuzuk.com.github.amedigital.dto.PlanetaRequest;
 import danieltsuzuk.com.github.amedigital.dto.PlanetaResponse;
 import danieltsuzuk.com.github.amedigital.entities.Planeta;
-import danieltsuzuk.com.github.amedigital.specifications.PlanetaSpecification;
 import danieltsuzuk.com.github.amedigital.services.PlanetaService;
+import danieltsuzuk.com.github.amedigital.specifications.PlanetaSpecification;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -53,7 +53,7 @@ public class PlanetaController {
      * @return uma resposta com o planeta encontrado e o status HTTP 200 (OK)
      */
     @GetMapping("/{variavel}")
-    public ResponseEntity<PlanetaResponse> buscarPorIdOuNome(@PathVariable(required = false) String variavel) {
+    public ResponseEntity<PlanetaResponse> buscarPorIdOuNome(@PathVariable String variavel) {
         Long id = null;
         String nome = null;
         try {
@@ -89,5 +89,21 @@ public class PlanetaController {
         return ResponseEntity.status(HttpStatus.OK).body(service.buscarTodos(spec, pageable));
     }
 
+    /**
+     * Deleta um planeta pelo seu ID.
+     * <p>
+     * Este método chama o serviço para deletar o planeta pelo ID fornecido. Se o planeta não for encontrado,
+     * uma exceção será lançada pelo serviço. Se a exclusão for bem-sucedida, retorna uma resposta HTTP 204 (No Content).
+     * </p>
+     *
+     * @param id o ID do planeta a ser deletado
+     * @return uma resposta HTTP 204 (No Content) se a exclusão for bem-sucedida
+     * @throws PlanetaNaoEncontradoException se o planeta não for encontrado
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<PlanetaResponse> deletar(@PathVariable Long id) {
+        service.deletar(id);
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+    }
 
 }
